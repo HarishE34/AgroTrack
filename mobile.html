@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<title>AgroTrack</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root{
+  --soil:#1a1209;--bark:#2c1f0e;--field:#0d2b1a;--moss:#1e4530;
+  --leaf:#2d6a4f;--sprout:#52b788;--lime:#95d5b2;--dew:#d8f3dc;
+  --wheat:#e9c46a;--harvest:#f4a261;--clay:#e76f51;
+  --sky:#90e0ef;--white:#f8fdf9;--dark:#111;
+  --mono:'DM Mono',monospace;--body:'Space Grotesk',sans-serif;
+  --nav-h:60px;--tab-h:64px;--safe-b:env(safe-area-inset-bottom,0px);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:var(--body);background:var(--soil);color:var(--white);}
+
+/* ── PHONE SHELL (desktop preview) ── */
+.phone-shell{
+  width:100%;max-width:390px;height:100vh;max-height:844px;
+  margin:0 auto;position:relative;overflow:hidden;
+  background:var(--soil);
+  display:flex;flex-direction:column;
+}
+@media(min-width:500px){
+  body{display:flex;align-items:center;justify-content:center;background:#0a0a0a;min-height:100vh;}
+  .phone-shell{border-radius:44px;border:8px solid #222;box-shadow:0 40px 100px rgba(0,0,0,0.8),0 0 0 1px #333;height:844px;}
+}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  height:44px;padding:0 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(0,0,0,0.4);flex-shrink:0;
+  font-family:var(--mono);font-size:0.7rem;color:rgba(255,255,255,0.7);
+}
+.status-time{font-weight:500;color:var(--white);}
+.status-icons{display:flex;gap:6px;align-items:center;}
+
+/* ── TOP NAV ── */
+.top-nav{
+  height:var(--nav-h);padding:0 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(26,18,9,0.9);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(82,183,136,0.1);flex-shrink:0;
+  position:relative;z-index:10;
+}
+.nav-logo-m{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;color:var(--sprout);}
+.nav-logo-m span{color:var(--wheat);}
+.drone-anim{font-size:1.3rem;animation:hfloat 3s ease-in-out infinite;display:inline-block;}
+@keyframes hfloat{0%,100%{transform:translateY(0) rotate(-4deg);}50%{transform:translateY(-4px) rotate(4deg);}}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.notif-btn{
+  width:36px;height:36px;border-radius:10px;
+  background:rgba(82,183,136,0.1);border:1px solid rgba(82,183,136,0.2);
+  display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;
+  position:relative;
+}
+.notif-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;background:var(--clay);border-radius:50%;border:1.5px solid var(--soil);}
+.avatar{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--sprout),var(--leaf));display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:var(--soil);}
+
+/* ── SCROLL AREA ── */
+.screen{display:none;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+.screen.active{display:block;}
+.screen::-webkit-scrollbar{display:none;}
+
+/* ── BOTTOM TABS ── */
+.tab-bar{
+  height:var(--tab-h);padding-bottom:var(--safe-b);
+  display:flex;background:rgba(20,14,6,0.97);
+  border-top:1px solid rgba(82,183,136,0.12);
+  flex-shrink:0;
+}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:all 0.18s;padding:6px 0;}
+.tab-icon{font-size:1.3rem;line-height:1;}
+.tab-label{font-size:0.58rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.05em;color:rgba(255,255,255,0.3);transition:color 0.18s;}
+.tab.active .tab-label{color:var(--sprout);}
+.tab-dot{width:4px;height:4px;border-radius:50%;background:var(--sprout);margin-top:2px;opacity:0;transition:opacity 0.18s;}
+.tab.active .tab-dot{opacity:1;}
+
+/* ── COMMON ── */
+.pg{padding:16px;}
+.pg-title{font-size:1.3rem;font-weight:700;margin-bottom:2px;}
+.pg-sub{font-size:0.78rem;color:var(--lime);margin-bottom:16px;line-height:1.5;}
+.tag{font-family:var(--mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--sprout);margin-bottom:6px;}
+.card{background:rgba(0,0,0,0.3);border:1px solid rgba(82,183,136,0.14);border-radius:16px;padding:14px;margin-bottom:12px;}
+.card:last-child{margin-bottom:0;}
+.row-between{display:flex;justify-content:space-between;align-items:center;}
+.section-label{font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--sprout);margin:16px 0 8px;}
+.chip{display:inline-flex;align-items:center;gap:5px;background:rgba(82,183,136,0.1);border:1px solid rgba(82,183,136,0.25);border-radius:999px;padding:4px 10px;font-size:0.72rem;color:var(--sprout);}
+.chip-dot{width:6px;height:6px;border-radius:50%;background:var(--sprout);animation:pdot 2s infinite;}
+@keyframes pdot{0%,100%{box-shadow:0 0 0 0 rgba(82,183,136,0.5);}50%{box-shadow:0 0 0 5px rgba(82,183,136,0);}}
+
+.btn-m{width:100%;padding:14px;border-radius:12px;border:none;font-family:var(--body);font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.18s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;}
+.btn-p{background:var(--sprout);color:var(--soil);}
+.btn-p:active{background:var(--lime);transform:scale(0.98);}
+.btn-o{background:transparent;color:var(--sprout);border:1.5px solid var(--sprout);}
+.btn-o:active{background:rgba(82,183,136,0.1);}
+.btn-d{background:rgba(231,111,81,0.15);color:var(--clay);border:1.5px solid rgba(231,111,81,0.4);}
+
+/* ── HOME ── */
+#s-home{background:radial-gradient(ellipse 100% 50% at 50% 0%,rgba(45,106,79,0.35) 0%,transparent 70%),linear-gradient(180deg,var(--soil) 0%,var(--bark) 100%);}
+.hero-m{padding:20px 16px 0;}
+.greeting{font-size:0.82rem;color:var(--lime);margin-bottom:2px;}
+.hero-name{font-size:1.55rem;font-weight:700;margin-bottom:12px;}
+.health-banner{
+  background:linear-gradient(135deg,rgba(30,69,48,0.8),rgba(14,43,26,0.8));
+  border:1px solid rgba(82,183,136,0.25);border-radius:18px;
+  padding:16px;margin-bottom:16px;position:relative;overflow:hidden;
+}
+.health-banner::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:radial-gradient(circle,rgba(82,183,136,0.15),transparent 70%);}
+.hb-row{display:flex;align-items:center;justify-content:space-between;}
+.hb-score{font-family:var(--mono);font-size:2.6rem;color:var(--sprout);font-weight:500;line-height:1;}
+.hb-label{font-size:0.62rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.08em;color:var(--lime);margin-top:2px;}
+.hb-farm{font-size:0.8rem;color:var(--white);font-weight:600;margin-bottom:2px;}
+.hb-meta{font-size:0.7rem;color:var(--lime);}
+.hb-progress{height:4px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:12px;overflow:hidden;}
+.hb-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--leaf),var(--sprout));width:89%;}
+
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.qcard{background:rgba(0,0,0,0.3);border:1px solid rgba(82,183,136,0.13);border-radius:14px;padding:14px;cursor:pointer;transition:border-color 0.18s;active:transform:scale(0.97);}
+.qcard:active{border-color:rgba(82,183,136,0.4);transform:scale(0.97);}
+.qcard-icon{font-size:1.6rem;margin-bottom:8px;}
+.qcard-title{font-size:0.82rem;font-weight:600;margin-bottom:3px;}
+.qcard-val{font-family:var(--mono);font-size:0.75rem;}
+.qcard-val.good{color:var(--sprout);}
+.qcard-val.warn{color:var(--wheat);}
+.qcard-val.bad{color:var(--clay);}
+
+.activity-list{display:flex;flex-direction:column;gap:8px;margin-bottom:80px;}
+.act-item{display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px;}
+.act-icon{font-size:1.4rem;flex-shrink:0;}
+.act-body{flex:1;min-width:0;}
+.act-title{font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.act-time{font-size:0.68rem;color:rgba(255,255,255,0.4);font-family:var(--mono);margin-top:2px;}
+.act-badge{font-size:0.62rem;font-family:var(--mono);padding:3px 8px;border-radius:4px;flex-shrink:0;}
+.act-badge.good{background:rgba(82,183,136,0.15);color:var(--sprout);}
+.act-badge.warn{background:rgba(233,196,106,0.15);color:var(--wheat);}
+.act-badge.bad{background:rgba(231,111,81,0.15);color:var(--clay);}
+
+/* ── SCAN ── */
+#s-scan{background:linear-gradient(180deg,var(--field) 0%,var(--bark) 100%);}
+.arena{
+  position:relative;height:200px;border-radius:16px;overflow:hidden;
+  background:linear-gradient(180deg,#0a1f11 0%,#0d2b1a 100%);
+  border:1px solid rgba(82,183,136,0.2);margin-bottom:14px;
+}
+.sg{position:absolute;inset:0;background-image:linear-gradient(rgba(82,183,136,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(82,183,136,0.07) 1px,transparent 1px);background-size:28px 28px;}
+.sl{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--sprout),transparent);animation:sc 2.2s linear infinite;box-shadow:0 0 12px var(--sprout);}
+@keyframes sc{from{top:0}to{top:100%}}
+.drone-m{position:absolute;top:30px;left:50%;font-size:2.8rem;filter:drop-shadow(0 4px 14px rgba(82,183,136,0.5));animation:df 4s ease-in-out infinite;}
+@keyframes df{0%,100%{transform:translateX(-50%) translateY(0);}25%{transform:translateX(-25%) translateY(-12px);}75%{transform:translateX(-75%) translateY(-8px);}}
+.crops-m{position:absolute;bottom:0;left:0;right:0;display:flex;gap:6px;padding:0 12px;align-items:flex-end;}
+.cp{font-size:1.6rem;animation:csway 3s ease-in-out infinite;}
+.cp:nth-child(even){animation-delay:0.3s;}
+@keyframes csway{0%,100%{transform:rotate(-3deg);}50%{transform:rotate(3deg);}}
+
+.scan-box{background:rgba(0,0,0,0.55);border:1px solid rgba(82,183,136,0.25);border-radius:14px;padding:14px;font-family:var(--mono);position:relative;overflow:hidden;}
+.scan-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--sprout),var(--wheat),var(--sprout));background-size:200%;animation:brun 2s linear infinite;}
+@keyframes brun{0%{background-position:0%}100%{background-position:200%}}
+.sr{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.78rem;}
+.sr:last-child{border:none;}
+.sk{color:var(--lime);}
+.sv{color:var(--white);font-weight:500;}
+.sv.g{color:var(--sprout);}
+.sv.w{color:var(--wheat);}
+.prog{background:rgba(255,255,255,0.1);border-radius:3px;height:5px;margin:12px 0 6px;overflow:hidden;}
+.pf{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--leaf),var(--sprout),var(--lime));animation:panim 3s ease-out forwards;}
+@keyframes panim{from{width:0}to{width:97%}}
+
+/* ── DASHBOARD ── */
+#s-dash{background:var(--bark);}
+.metrics-m{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.mc{background:rgba(0,0,0,0.3);border:1px solid rgba(82,183,136,0.14);border-radius:14px;padding:12px;position:relative;overflow:hidden;}
+.mc::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 100% 0%,rgba(82,183,136,0.06),transparent 60%);pointer-events:none;}
+.mc-icon{font-size:1.3rem;margin-bottom:6px;}
+.mc-name{font-size:0.62rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.06em;color:var(--lime);margin-bottom:4px;}
+.mc-val{font-family:var(--mono);font-size:1.15rem;font-weight:500;}
+.mc-st{font-size:0.65rem;margin-top:4px;}
+.st-g{color:var(--sprout);}
+.st-w{color:var(--wheat);}
+.st-d{color:var(--clay);}
+
+.crop-card{background:rgba(0,0,0,0.3);border:1px solid rgba(82,183,136,0.15);border-radius:14px;padding:14px;margin-bottom:12px;}
+.cc-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.cc-icon{font-size:2rem;}
+.cc-name{font-size:0.95rem;font-weight:600;}
+.cc-stage{font-size:0.72rem;color:var(--lime);margin-top:2px;}
+.cc-conf{margin-left:auto;background:rgba(82,183,136,0.12);border:1px solid rgba(82,183,136,0.25);border-radius:999px;padding:3px 10px;font-family:var(--mono);font-size:0.68rem;color:var(--sprout);}
+.stage-pills{display:flex;gap:4px;flex-wrap:wrap;}
+.sp{font-size:0.62rem;padding:3px 8px;border-radius:4px;font-weight:600;}
+.sp-done{background:var(--sprout);color:var(--soil);}
+.sp-now{background:var(--wheat);color:var(--soil);}
+.sp-next{color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:3px 8px;font-size:0.62rem;}
+
+.sensor-list{display:flex;flex-direction:column;gap:0;}
+.s-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.s-row:last-child{border:none;}
+.s-label{font-size:0.78rem;color:var(--lime);}
+.s-val{font-family:var(--mono);font-size:0.8rem;}
+
+.weather-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;}
+.weather-strip::-webkit-scrollbar{display:none;}
+.wd{min-width:58px;text-align:center;background:rgba(0,0,0,0.2);border-radius:10px;padding:10px 6px;}
+.wd.hi{background:rgba(82,183,136,0.1);border:1px solid rgba(82,183,136,0.22);}
+.wd-day{font-size:0.58rem;color:var(--lime);margin-bottom:4px;}
+.wd-icon{font-size:1.2rem;}
+.wd-temp{font-family:var(--mono);font-size:0.7rem;margin-top:4px;}
+
+/* ── DISEASE ── */
+#s-disease{background:linear-gradient(180deg,#1a0a09 0%,var(--bark) 100%);}
+.alert-m{background:rgba(231,111,81,0.1);border:1px solid rgba(231,111,81,0.35);border-radius:16px;padding:14px;margin-bottom:14px;position:relative;overflow:hidden;}
+.alert-m::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--clay);}
+.am-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.am-badge{background:var(--clay);color:#fff;font-size:0.58rem;font-family:var(--mono);text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:0.05em;}
+.am-title{font-size:0.88rem;font-weight:600;}
+.am-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.am-stat{background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;}
+.am-sl{font-size:0.6rem;font-family:var(--mono);text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:4px;}
+.am-sv{font-size:0.9rem;font-weight:600;}
+
+.symp-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.symp{background:rgba(231,111,81,0.1);border:1px solid rgba(231,111,81,0.25);border-radius:6px;padding:6px 10px;font-size:0.72rem;}
+
+.treat-m{background:rgba(0,0,0,0.25);border:1.5px solid rgba(82,183,136,0.2);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all 0.18s;}
+.treat-m.sel{border-color:var(--sprout);background:rgba(82,183,136,0.08);}
+.treat-m:active{transform:scale(0.98);}
+.tm-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.tm-icon{font-size:1.5rem;}
+.tm-title{font-size:0.88rem;font-weight:600;}
+.tm-desc{font-size:0.75rem;color:var(--lime);line-height:1.5;margin-bottom:6px;}
+.tm-stat{font-family:var(--mono);font-size:0.75rem;color:var(--wheat);}
+
+/* ── YIELD ── */
+#s-yield{background:var(--bark);}
+.yield-banner{background:linear-gradient(135deg,rgba(30,69,48,0.5),rgba(0,0,0,0.3));border:1px solid rgba(82,183,136,0.22);border-radius:18px;padding:18px;margin-bottom:14px;}
+.yb-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;}
+.yb-item{}
+.yb-label{font-family:var(--mono);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--sprout);margin-bottom:4px;}
+.yb-val{font-size:1.8rem;font-weight:700;line-height:1;}
+.yb-unit{font-size:0.85rem;color:var(--lime);}
+.yb-sub{font-size:0.68rem;color:var(--lime);margin-top:3px;}
+.yb-val2{font-family:var(--mono);font-size:1.8rem;color:var(--sprout);}
+
+.pred-m{display:flex;justify-content:space-between;align-items:center;padding:11px 12px;background:rgba(0,0,0,0.2);border-radius:10px;border-left:3px solid var(--sprout);margin-bottom:8px;}
+.pred-ml{font-size:0.78rem;color:var(--lime);}
+.pred-mv{font-family:var(--mono);font-size:0.8rem;}
+
+/* ── WATER ── */
+#s-water{background:linear-gradient(180deg,#050d18 0%,var(--bark) 100%);}
+.water-hero{background:rgba(0,20,40,0.5);border:1px solid rgba(144,224,239,0.18);border-radius:18px;padding:16px;margin-bottom:14px;text-align:center;}
+.wh-icon{font-size:3rem;margin-bottom:8px;}
+.wh-alert{font-family:var(--mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--clay);margin-bottom:12px;}
+.water-cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.wc-box{background:rgba(0,0,0,0.3);border-radius:10px;padding:12px;}
+.wc-label{font-size:0.62rem;font-family:var(--mono);text-transform:uppercase;color:var(--sky);margin-bottom:6px;}
+.wc-val{font-family:var(--mono);font-size:1.4rem;font-weight:500;}
+.wc-val.bad{color:var(--clay);}
+.leak-banner{background:rgba(231,111,81,0.12);border:1px solid rgba(231,111,81,0.35);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;}
+.sensor-grid-m{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+.sm-card{background:rgba(0,0,0,0.3);border:1px solid rgba(144,224,239,0.12);border-radius:10px;padding:10px;text-align:center;}
+.sm-label{font-size:0.58rem;font-family:var(--mono);color:var(--sky);text-transform:uppercase;margin-bottom:6px;}
+.sm-val{font-family:var(--mono);font-size:1rem;}
+
+/* ── GUARDIAN ── */
+#s-guardian{background:linear-gradient(180deg,#050a0f 0%,var(--field) 100%);}
+.map-m{position:relative;height:200px;border-radius:16px;overflow:hidden;background:radial-gradient(circle at 50% 50%,#0a2e1a,#050f0a);border:1px solid rgba(82,183,136,0.18);margin-bottom:14px;}
+.mg{position:absolute;inset:0;background-image:linear-gradient(rgba(82,183,136,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(82,183,136,0.04) 1px,transparent 1px);background-size:36px 36px;}
+.mb{position:absolute;top:14px;left:14px;right:14px;bottom:14px;border:1.5px dashed rgba(82,183,136,0.28);border-radius:10px;}
+.ap{position:absolute;bottom:30px;right:60px;width:12px;height:12px;background:var(--clay);border-radius:50%;animation:ping 1.5s ease-out infinite;}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(231,111,81,0.8);}100%{box-shadow:0 0 0 20px rgba(231,111,81,0);}}
+.pd{position:absolute;font-size:1.5rem;animation:ptrl 5s linear infinite;}
+@keyframes ptrl{0%{top:20px;left:20px;}25%{top:20px;left:calc(100% - 56px);}50%{top:calc(100% - 56px);left:calc(100% - 56px);}75%{top:calc(100% - 56px);left:20px;}100%{top:20px;left:20px;}}
+.live-badge{position:absolute;bottom:10px;left:10px;font-family:var(--mono);font-size:0.6rem;color:var(--sprout);}
+.field-info{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.6);border:1px solid rgba(82,183,136,0.18);border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:0.6rem;}
+.field-info div{color:var(--lime);}
+.intruder-tag{position:absolute;bottom:28px;right:50px;background:rgba(231,111,81,0.9);border-radius:4px;padding:3px 8px;font-size:0.58rem;font-family:var(--mono);white-space:nowrap;}
+
+.g-alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:80px;}
+.ga{display:flex;gap:10px;align-items:flex-start;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px;}
+.ga-icon{font-size:1.4rem;flex-shrink:0;}
+.ga-body{flex:1;}
+.ga-title{font-size:0.82rem;font-weight:600;}
+.ga-meta{font-size:0.68rem;color:var(--lime);font-family:var(--mono);margin-top:2px;}
+.ga-time{font-size:0.65rem;color:rgba(255,255,255,0.35);font-family:var(--mono);}
+
+/* ── REGISTER ── */
+#s-reg{background:var(--bark);}
+.reg-m{padding:16px;}
+.reg-card-m{background:rgba(30,69,48,0.25);border:1px solid rgba(82,183,136,0.18);border-radius:18px;padding:20px;}
+.form-group-m{margin-bottom:14px;}
+.fgl{display:block;font-size:0.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.08em;color:var(--sprout);margin-bottom:6px;}
+.fgi{width:100%;padding:12px 14px;background:rgba(0,0,0,0.35);border:1px solid rgba(82,183,136,0.22);border-radius:10px;color:var(--white);font-family:var(--body);font-size:0.9rem;outline:none;transition:border-color 0.18s;-webkit-appearance:none;}
+.fgi:focus{border-color:var(--sprout);}
+.fgi::placeholder{color:rgba(255,255,255,0.25);}
+select.fgi option{background:var(--bark);}
+.form-row-m{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.reg-note-m{text-align:center;font-size:0.72rem;color:var(--lime);margin-top:12px;}
+.reg-note-m span{color:var(--sprout);}
+
+/* ── TOAST ── */
+.toast-m{
+  position:absolute;bottom:calc(var(--tab-h) + 10px);left:12px;right:12px;z-index:200;
+  background:rgba(30,69,48,0.97);border:1px solid var(--sprout);border-radius:12px;
+  padding:12px 16px;display:none;align-items:center;gap:10px;
+  backdrop-filter:blur(12px);animation:sup 0.25s ease;font-size:0.82rem;
+}
+.toast-m.show{display:flex;}
+@keyframes sup{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+/* ── PROFILE ── */
+#s-profile{background:var(--bark);}
+.profile-hero{background:linear-gradient(135deg,rgba(30,69,48,0.5),rgba(0,0,0,0.3));padding:24px 16px;text-align:center;border-bottom:1px solid rgba(82,183,136,0.1);margin-bottom:16px;}
+.avatar-lg{width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,var(--sprout),var(--leaf));display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:700;color:var(--soil);margin:0 auto 12px;}
+.pf-name{font-size:1.1rem;font-weight:700;margin-bottom:2px;}
+.pf-meta{font-size:0.75rem;color:var(--lime);}
+.pf-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(82,183,136,0.12);border:1px solid rgba(82,183,136,0.25);border-radius:999px;padding:4px 12px;font-size:0.7rem;color:var(--sprout);margin-top:8px;}
+.menu-list{display:flex;flex-direction:column;gap:8px;padding:0 16px;margin-bottom:80px;}
+.menu-item{display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;cursor:pointer;transition:border-color 0.18s;}
+.menu-item:active{border-color:rgba(82,183,136,0.3);transform:scale(0.99);}
+.mi-icon{font-size:1.3rem;width:36px;height:36px;background:rgba(82,183,136,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.mi-text{flex:1;}
+.mi-title{font-size:0.88rem;font-weight:600;}
+.mi-sub{font-size:0.7rem;color:var(--lime);margin-top:2px;}
+.mi-arrow{color:rgba(255,255,255,0.25);font-size:0.9rem;}
+</style>
+</head>
+<body>
+
+<div class="phone-shell">
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span class="status-time" id="stime">9:41</span>
+    <div class="status-icons">
+      <span>📶</span><span>🔋</span>
+    </div>
+  </div>
+
+  <!-- TOP NAV -->
+  <div class="top-nav">
+    <div class="nav-logo-m"><span class="drone-anim">🚁</span> Agro<span>Track</span></div>
+    <div class="nav-right">
+      <div class="notif-btn" onclick="showToast('🔴 Leaf Blight detected in Sector A3')">
+        🔔<div class="notif-dot"></div>
+      </div>
+      <div class="avatar">MS</div>
+    </div>
+  </div>
+
+  <!-- ══ SCREENS ══ -->
+
+  <!-- HOME -->
+  <div class="screen active" id="s-home">
+    <div class="hero-m">
+      <div class="greeting">Good Morning 🌤</div>
+      <div class="hero-name">Murugan's Farm</div>
+      <div class="health-banner">
+        <div class="hb-row">
+          <div>
+            <div class="hb-farm">Thanjavur · 5 Acres · Rice</div>
+            <div class="hb-meta">Last scan: Today, 08:42 AM</div>
+          </div>
+          <div>
+            <div class="hb-score">89%</div>
+            <div class="hb-label">Farm Health</div>
+          </div>
+        </div>
+        <div class="hb-progress"><div class="hb-fill"></div></div>
+      </div>
+
+      <div class="tag">Quick Overview</div>
+      <div class="quick-grid">
+        <div class="qcard" onclick="switchTab('dash')">
+          <div class="qcard-icon">💧</div>
+          <div class="qcard-title">Water Status</div>
+          <div class="qcard-val good">✔ Good</div>
+        </div>
+        <div class="qcard" onclick="switchTab('disease')">
+          <div class="qcard-icon">🦠</div>
+          <div class="qcard-title">Disease Risk</div>
+          <div class="qcard-val warn">⚠ Medium</div>
+        </div>
+        <div class="qcard" onclick="switchTab('yield')">
+          <div class="qcard-icon">📦</div>
+          <div class="qcard-title">Expected Yield</div>
+          <div class="qcard-val good">4.8 Tons</div>
+        </div>
+        <div class="qcard" onclick="switchTab('scan')">
+          <div class="qcard-icon">🚁</div>
+          <div class="qcard-title">Drone Status</div>
+          <div class="qcard-val good">● Active</div>
+        </div>
+      </div>
+
+      <div class="tag">Recent Activity</div>
+      <div class="activity-list">
+        <div class="act-item">
+          <div class="act-icon">🦠</div>
+          <div class="act-body">
+            <div class="act-title">Leaf Blight detected — Sector A3</div>
+            <div class="act-time">Today · 08:44 AM</div>
+          </div>
+          <div class="act-badge bad">Alert</div>
+        </div>
+        <div class="act-item">
+          <div class="act-icon">🚁</div>
+          <div class="act-body">
+            <div class="act-title">Morning drone scan completed</div>
+            <div class="act-time">Today · 08:42 AM</div>
+          </div>
+          <div class="act-badge good">Done</div>
+        </div>
+        <div class="act-item">
+          <div class="act-icon">💧</div>
+          <div class="act-body">
+            <div class="act-title">Water usage 125% over normal</div>
+            <div class="act-time">Today · 09:12 AM</div>
+          </div>
+          <div class="act-badge warn">Check</div>
+        </div>
+        <div class="act-item">
+          <div class="act-icon">🐄</div>
+          <div class="act-body">
+            <div class="act-title">Cattle intrusion — South Boundary</div>
+            <div class="act-time">Yesterday · 11:42 PM</div>
+          </div>
+          <div class="act-badge bad">Alert</div>
+        </div>
+        <div class="act-item">
+          <div class="act-icon">🌾</div>
+          <div class="act-body">
+            <div class="act-title">Crop identified: Rice (Samba) 97%</div>
+            <div class="act-time">Yesterday · 07:30 AM</div>
+          </div>
+          <div class="act-badge good">AI</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCAN -->
+  <div class="screen" id="s-scan">
+    <div class="pg">
+      <div class="tag">Live Drone Analysis</div>
+      <div class="pg-title">Scanning Field 🚁</div>
+      <div class="pg-sub">AI analyzing crop patterns. No input required.</div>
+
+      <div class="arena">
+        <div class="sg"></div>
+        <div class="sl"></div>
+        <div class="drone-m">🚁</div>
+        <div class="crops-m" id="crop-row-m"></div>
+      </div>
+
+      <div class="scan-box">
+        <div class="sr"><span class="sk">Drone Status</span><span class="sv g">● Active · Sector A3</span></div>
+        <div class="sr"><span class="sk">Images Captured</span><span class="sv" id="img-cnt">0 / 240</span></div>
+        <div class="sr"><span class="sk">Detected Crop</span><span class="sv g">🌾 Rice</span></div>
+        <div class="sr"><span class="sk">Growth Stage</span><span class="sv">Vegetative</span></div>
+        <div class="sr"><span class="sk">Plant Density</span><span class="sv g">Normal</span></div>
+        <div class="sr"><span class="sk">Disease</span><span class="sv w">⚠ Sector A3</span></div>
+        <div class="sr"><span class="sk">AI Confidence</span><span class="sv g">97%</span></div>
+        <div class="prog"><div class="pf"></div></div>
+        <div style="font-size:0.65rem;color:var(--lime);font-family:var(--mono)">Scan Progress — Running</div>
+      </div>
+      <div style="height:14px;"></div>
+      <button class="btn-m btn-p" onclick="switchTab('dash')">View Dashboard →</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="screen" id="s-dash">
+    <div class="pg">
+      <div class="tag">Farm Dashboard</div>
+      <div class="pg-title">Murugan's Farm</div>
+      <div class="pg-sub">Thanjavur · Rice · 5 Acres · Last scan 08:42 AM</div>
+
+      <div class="metrics-m">
+        <div class="mc"><div class="mc-icon">💧</div><div class="mc-name">Water</div><div class="mc-val">Good</div><div class="mc-st st-g">✔ Optimal</div></div>
+        <div class="mc"><div class="mc-icon">🧪</div><div class="mc-name">Nitrogen</div><div class="mc-val">Low</div><div class="mc-st st-w">⚠ Fertilize</div></div>
+        <div class="mc"><div class="mc-icon">🦠</div><div class="mc-name">Disease</div><div class="mc-val">Medium</div><div class="mc-st st-w">⚠ Blight</div></div>
+        <div class="mc"><div class="mc-icon">🐛</div><div class="mc-name">Pest Risk</div><div class="mc-val">Low</div><div class="mc-st st-g">✔ Clear</div></div>
+        <div class="mc"><div class="mc-icon">🌡</div><div class="mc-name">Temp</div><div class="mc-val">28°C</div><div class="mc-st st-g">✔ Ideal</div></div>
+        <div class="mc"><div class="mc-icon">💦</div><div class="mc-name">Moisture</div><div class="mc-val">68%</div><div class="mc-st st-g">✔ Good</div></div>
+      </div>
+
+      <div class="section-label">AI Crop Detection</div>
+      <div class="crop-card">
+        <div class="cc-row">
+          <div class="cc-icon">🌾</div>
+          <div>
+            <div class="cc-name">Rice — Samba Variety</div>
+            <div class="cc-stage">🌱 Vegetative Stage · Day 34</div>
+          </div>
+          <div class="cc-conf">97%</div>
+        </div>
+        <div class="stage-pills">
+          <span class="sp sp-done">Seedling ✓</span>
+          <span style="color:rgba(255,255,255,0.2);font-size:0.6rem">──</span>
+          <span class="sp sp-now">▶ Vegetative</span>
+          <span style="color:rgba(255,255,255,0.2);font-size:0.6rem">──</span>
+          <span class="sp-next">Flowering</span>
+          <span style="color:rgba(255,255,255,0.2);font-size:0.6rem">──</span>
+          <span class="sp-next">Harvest</span>
+        </div>
+      </div>
+
+      <div class="section-label">Live Sensor Data</div>
+      <div class="card">
+        <div class="sensor-list">
+          <div class="s-row"><span class="s-label">🌡 Temperature</span><span class="s-val">28.4°C</span></div>
+          <div class="s-row"><span class="s-label">💧 Humidity</span><span class="s-val">72%</span></div>
+          <div class="s-row"><span class="s-label">🧪 Nitrogen</span><span class="s-val" style="color:var(--wheat)">LOW ⚠</span></div>
+          <div class="s-row"><span class="s-label">🧪 Phosphorus</span><span class="s-val" style="color:var(--sprout)">Normal</span></div>
+          <div class="s-row"><span class="s-label">⚗ pH Level</span><span class="s-val">6.8</span></div>
+          <div class="s-row"><span class="s-label">🌊 Water Level</span><span class="s-val" style="color:var(--sprout)">Adequate</span></div>
+        </div>
+      </div>
+
+      <div class="section-label">Weather — Next 7 Days</div>
+      <div class="weather-strip">
+        <div class="wd"><div class="wd-day">MON</div><div class="wd-icon">☀️</div><div class="wd-temp">28°</div></div>
+        <div class="wd"><div class="wd-day">TUE</div><div class="wd-icon">⛅</div><div class="wd-temp">26°</div></div>
+        <div class="wd hi"><div class="wd-day" style="color:var(--sprout)">WED</div><div class="wd-icon">🌧️</div><div class="wd-temp">24°</div></div>
+        <div class="wd"><div class="wd-day">THU</div><div class="wd-icon">🌧️</div><div class="wd-temp">23°</div></div>
+        <div class="wd"><div class="wd-day">FRI</div><div class="wd-icon">☀️</div><div class="wd-temp">29°</div></div>
+        <div class="wd"><div class="wd-day">SAT</div><div class="wd-icon">☀️</div><div class="wd-temp">30°</div></div>
+        <div class="wd"><div class="wd-day">SUN</div><div class="wd-icon">⛅</div><div class="wd-temp">27°</div></div>
+      </div>
+
+      <button class="btn-m btn-p" onclick="switchTab('disease')">🦠 View Disease Report</button>
+      <button class="btn-m btn-o" onclick="switchTab('yield')">📊 Yield Forecast</button>
+    </div>
+  </div>
+
+  <!-- DISEASE -->
+  <div class="screen" id="s-disease">
+    <div class="pg">
+      <div class="tag">Disease Detection</div>
+      <div class="pg-title">⚠ Leaf Blight</div>
+      <div class="pg-sub">Detected in Sector A3 · Precision treatment ready</div>
+
+      <div class="alert-m">
+        <div class="am-head">
+          <div class="am-badge">🔴 Alert</div>
+          <div class="am-title">Xanthomonas oryzae</div>
+        </div>
+        <div class="am-grid">
+          <div class="am-stat"><div class="am-sl">Location</div><div class="am-sv">📍 Sector A3</div></div>
+          <div class="am-stat"><div class="am-sl">Confidence</div><div class="am-sv" style="color:var(--clay)">96%</div></div>
+          <div class="am-stat"><div class="am-sl">Affected</div><div class="am-sv">12 Plants</div></div>
+          <div class="am-stat"><div class="am-sl">Spread Risk</div><div class="am-sv" style="color:var(--wheat)">Medium</div></div>
+          <div class="am-stat"><div class="am-sl">Area</div><div class="am-sv">0.08 Acres</div></div>
+          <div class="am-stat"><div class="am-sl">Detected</div><div class="am-sv">08:44 AM</div></div>
+        </div>
+      </div>
+
+      <div class="section-label">Symptoms Detected</div>
+      <div class="symp-wrap">
+        <div class="symp">🍂 Yellow Margins</div>
+        <div class="symp">💧 Water Lesions</div>
+        <div class="symp">🔴 Leaf Tip Burn</div>
+        <div class="symp">🍃 Wilting</div>
+      </div>
+
+      <div class="section-label">Choose Treatment</div>
+      <div class="treat-m sel" id="t1" onclick="selTreat('t1')">
+        <div class="tm-head"><div class="tm-icon">💉</div><div class="tm-title">Precision Spray</div></div>
+        <div class="tm-desc">Drone sprays copper-based fungicide only on the 12 infected plants. Minimal chemical use.</div>
+        <div class="tm-stat">Medicine Required: 150 ml</div>
+      </div>
+      <div class="treat-m" id="t2" onclick="selTreat('t2')">
+        <div class="tm-head"><div class="tm-icon">✂️</div><div class="tm-title">Remove Infected Plants</div></div>
+        <div class="tm-desc">Robotic arm cuts and removes infected plants to prevent spread. For severe cases.</div>
+        <div class="tm-stat">12 plants to be removed</div>
+      </div>
+
+      <button class="btn-m btn-p" onclick="showToast('🚁 Drone dispatched to Sector A3 for treatment')">🚁 Dispatch Drone</button>
+      <button class="btn-m btn-o" onclick="switchTab('dash')">← Back to Dashboard</button>
+    </div>
+  </div>
+
+  <!-- YIELD -->
+  <div class="screen" id="s-yield">
+    <div class="pg">
+      <div class="tag">AI Yield Forecast</div>
+      <div class="pg-title">Harvest Prediction</div>
+      <div class="pg-sub">Calculated automatically from crop, weather & soil data</div>
+
+      <div class="yield-banner">
+        <div class="yb-grid">
+          <div class="yb-item">
+            <div class="yb-label">Expected Yield</div>
+            <div class="yb-val" style="color:var(--wheat)">4.8 <span class="yb-unit">Tons</span></div>
+            <div class="yb-sub">5-acre Rice farm</div>
+          </div>
+          <div class="yb-item">
+            <div class="yb-label">Days to Harvest</div>
+            <div class="yb-val" style="color:var(--white)">22 <span class="yb-unit">days</span></div>
+            <div class="yb-sub">Est. July 5, 2025</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;margin-top:4px;">
+          <div class="yb-label">Market Value Estimate</div>
+          <div class="yb-val2">₹86,400</div>
+          <div class="yb-sub">At ₹18,000 / ton</div>
+        </div>
+      </div>
+
+      <div class="section-label">Forecast Factors</div>
+      <div class="pred-m"><span class="pred-ml">🌾 Crop Type</span><span class="pred-mv">Rice — Samba</span></div>
+      <div class="pred-m"><span class="pred-ml">🌱 Growth Stage</span><span class="pred-mv">Day 34 of 90</span></div>
+      <div class="pred-m"><span class="pred-ml">🌦 Rainfall</span><span class="pred-mv">Good (42mm)</span></div>
+      <div class="pred-m"><span class="pred-ml">🌡 Temperature</span><span class="pred-mv">27.2°C</span></div>
+      <div class="pred-m"><span class="pred-ml">🧪 Soil Index</span><span class="pred-mv">74 / 100</span></div>
+      <div class="pred-m"><span class="pred-ml">🦠 Disease Impact</span><span class="pred-mv" style="color:var(--wheat)">-0.2 Ton</span></div>
+      <div class="pred-m" style="border-left:3px solid var(--sprout);background:rgba(82,183,136,0.06)">
+        <span class="pred-ml" style="color:var(--white);font-weight:600">📦 Final Estimate</span>
+        <span class="pred-mv" style="color:var(--sprout)">4.8 Tons</span>
+      </div>
+      <div style="height:10px;"></div>
+      <button class="btn-m btn-p" onclick="showToast('📊 Yield report exported to your mobile')">📤 Export Report</button>
+      <button class="btn-m btn-o" onclick="switchTab('dash')">← Dashboard</button>
+    </div>
+  </div>
+
+  <!-- WATER -->
+  <div class="screen" id="s-water">
+    <div class="pg">
+      <div class="tag">Water Intelligence</div>
+      <div class="pg-title">💧 Leak Detected</div>
+      <div class="pg-sub">Unusual water usage in Zone B — immediate action recommended</div>
+
+      <div class="water-hero">
+        <div class="wh-icon">🚨</div>
+        <div class="wh-alert">Possible Leakage Detected</div>
+        <div class="water-cmp">
+          <div class="wc-box">
+            <div class="wc-label">Normal Usage</div>
+            <div class="wc-val">2,000 L</div>
+            <div style="font-size:0.62rem;color:var(--sprout);margin-top:4px">✔ Baseline</div>
+          </div>
+          <div class="wc-box">
+            <div class="wc-label">Today's Usage</div>
+            <div class="wc-val bad">4,500 L</div>
+            <div style="font-size:0.62rem;color:var(--clay);margin-top:4px">⚠ +125%</div>
+          </div>
+        </div>
+        <div class="leak-banner">
+          <span style="font-size:1.5rem">⚠️</span>
+          <div>
+            <div style="font-size:0.8rem;font-weight:600;color:var(--clay)">Leak — Zone B, Main Line</div>
+            <div style="font-size:0.68rem;color:rgba(255,255,255,0.5);margin-top:2px">Alert sent at 09:12 AM</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Sensor Network</div>
+      <div class="sensor-grid-m">
+        <div class="sm-card"><div class="sm-label">Soil Moisture</div><div class="sm-val">68%</div><div style="font-size:0.58rem;color:var(--sprout);margin-top:4px">✔ OK</div></div>
+        <div class="sm-card" style="border-color:rgba(231,111,81,0.3)"><div class="sm-label">Flow Zone B</div><div class="sm-val" style="color:var(--clay)">14 L/m</div><div style="font-size:0.58rem;color:var(--clay);margin-top:4px">⚠ High</div></div>
+        <div class="sm-card"><div class="sm-label">Water Table</div><div class="sm-val">1.4 m</div><div style="font-size:0.58rem;color:var(--sprout);margin-top:4px">✔ OK</div></div>
+        <div class="sm-card"><div class="sm-label">Reservoir</div><div class="sm-val">78%</div><div style="font-size:0.58rem;color:var(--sprout);margin-top:4px">✔ Good</div></div>
+        <div class="sm-card"><div class="sm-label">Pressure</div><div class="sm-val" style="color:var(--wheat)">3.8 bar</div><div style="font-size:0.58rem;color:var(--wheat);margin-top:4px">⚠ High</div></div>
+        <div class="sm-card"><div class="sm-label">Total Today</div><div class="sm-val" style="color:var(--clay)">4.5k L</div><div style="font-size:0.58rem;color:var(--clay);margin-top:4px">⚠ Excess</div></div>
+      </div>
+
+      <button class="btn-m btn-p" onclick="showToast('🔧 Maintenance team notified for Zone B')">🔧 Notify Maintenance</button>
+      <button class="btn-m btn-d" onclick="showToast('🚰 Emergency shutoff Zone B — Triggered')">🚰 Emergency Shutoff</button>
+      <button class="btn-m btn-o" onclick="switchTab('dash')">← Dashboard</button>
+    </div>
+  </div>
+
+  <!-- GUARDIAN -->
+  <div class="screen" id="s-guardian">
+    <div class="pg">
+      <div class="tag">AI Farm Guardian</div>
+      <div class="pg-title">🛡 Night Patrol</div>
+      <div class="pg-sub">Drone patrols field perimeter. Detecting threats automatically.</div>
+
+      <div class="map-m">
+        <div class="mg"></div>
+        <div class="mb"></div>
+        <div class="pd">🚁</div>
+        <div class="ap"></div>
+        <div class="live-badge">● LIVE · 11:42 PM</div>
+        <div class="field-info"><div>5 Acres</div><div style="color:var(--sprout)">Perimeter 900m</div></div>
+        <div class="intruder-tag">⚠ Animal</div>
+      </div>
+
+      <div class="section-label">Alert Log Tonight</div>
+      <div class="g-alerts">
+        <div class="ga" style="border-color:rgba(231,111,81,0.3);background:rgba(231,111,81,0.07)">
+          <div class="ga-icon">🐄</div>
+          <div class="ga-body">
+            <div class="ga-title" style="color:var(--clay)">Cattle Intrusion</div>
+            <div class="ga-meta">📍 South Boundary · 3 cattle</div>
+          </div>
+          <div class="ga-time">11:42 PM</div>
+        </div>
+        <div class="ga">
+          <div class="ga-icon">🦊</div>
+          <div class="ga-body">
+            <div class="ga-title">Wild Animal — East</div>
+            <div class="ga-meta">📍 East Gate · Moved away</div>
+          </div>
+          <div class="ga-time">10:18 PM</div>
+        </div>
+        <div class="ga">
+          <div class="ga-icon">👤</div>
+          <div class="ga-body">
+            <div class="ga-title">Unauthorized Entry Attempt</div>
+            <div class="ga-meta">📍 North Fence · Retreated</div>
+          </div>
+          <div class="ga-time">09:55 PM</div>
+        </div>
+        <div class="ga" style="border-color:rgba(82,183,136,0.2)">
+          <div class="ga-icon">✅</div>
+          <div class="ga-body">
+            <div class="ga-title" style="color:var(--sprout)">Patrol Started — All Clear</div>
+            <div class="ga-meta">📍 Full perimeter · Battery 94%</div>
+          </div>
+          <div class="ga-time">09:00 PM</div>
+        </div>
+      </div>
+
+      <button class="btn-m btn-p" onclick="showToast('📱 Farmer alerted about cattle — South Boundary')">📱 Alert Farmer</button>
+      <button class="btn-m btn-o" onclick="showToast('🔊 Alarm activated at South Boundary')">🔊 Sound Alarm</button>
+    </div>
+  </div>
+
+  <!-- REGISTER -->
+  <div class="screen" id="s-reg">
+    <div class="reg-m">
+      <div class="tag" style="text-align:center">Farmer Registration</div>
+      <div class="pg-title" style="text-align:center;margin-bottom:4px">🌾 Create Account</div>
+      <div class="pg-sub" style="text-align:center;margin-bottom:16px">Just 3 fields. No crop details needed.</div>
+
+      <div class="reg-card-m">
+        <div class="form-group-m">
+          <label class="fgl">Full Name</label>
+          <input class="fgi" type="text" placeholder="e.g. Murugan Selvam" id="rn"/>
+        </div>
+        <div class="form-row-m">
+          <div class="form-group-m">
+            <label class="fgl">Mobile</label>
+            <input class="fgi" type="tel" placeholder="+91 99999 99999" id="rm"/>
+          </div>
+          <div class="form-group-m">
+            <label class="fgl">District</label>
+            <select class="fgi" id="rd">
+              <option value="">Select</option>
+              <option>Coimbatore</option><option>Madurai</option>
+              <option>Thanjavur</option><option>Salem</option>
+              <option>Trichy</option><option>Erode</option>
+              <option>Dindigul</option><option>Tirunelveli</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group-m">
+          <label class="fgl">Field Area (Acres)</label>
+          <input class="fgi" type="number" placeholder="e.g. 5" id="ra"/>
+        </div>
+        <button class="btn-m btn-p" onclick="handleReg()">🚀 Register & Launch Drone</button>
+        <div class="reg-note-m">AgroTrack detects crop automatically. <span>No manual entry needed.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="screen" id="s-profile">
+    <div class="profile-hero">
+      <div class="avatar-lg">MS</div>
+      <div class="pf-name">Murugan Selvam</div>
+      <div class="pf-meta">+91 98765 43210 · Thanjavur</div>
+      <div><div class="pf-chip"><div class="chip-dot"></div>Active Farmer · 5 Acres</div></div>
+    </div>
+    <div class="menu-list">
+      <div class="menu-item">
+        <div class="mi-icon">🌾</div>
+        <div class="mi-text"><div class="mi-title">My Farm</div><div class="mi-sub">Rice · Samba · 5 Acres · Thanjavur</div></div>
+        <div class="mi-arrow">›</div>
+      </div>
+      <div class="menu-item" onclick="switchTab('scan')">
+        <div class="mi-icon">🚁</div>
+        <div class="mi-text"><div class="mi-title">Schedule Drone Scan</div><div class="mi-sub">Next scan: Tomorrow 07:00 AM</div></div>
+        <div class="mi-arrow">›</div>
+      </div>
+      <div class="menu-item">
+        <div class="mi-icon">🔔</div>
+        <div class="mi-text"><div class="mi-title">Alert Settings</div><div class="mi-sub">SMS · Push · WhatsApp enabled</div></div>
+        <div class="mi-arrow">›</div>
+      </div>
+      <div class="menu-item">
+        <div class="mi-icon">🌐</div>
+        <div class="mi-text"><div class="mi-title">Language</div><div class="mi-sub">English · தமிழ் (Tamil)</div></div>
+        <div class="mi-arrow">›</div>
+      </div>
+      <div class="menu-item">
+        <div class="mi-icon">📊</div>
+        <div class="mi-text"><div class="mi-title">Yield History</div><div class="mi-sub">View past seasons & reports</div></div>
+        <div class="mi-arrow">›</div>
+      </div>
+      <div class="menu-item">
+        <div class="mi-icon">🛡</div>
+        <div class="mi-text"><div class="mi-title">Guardian Settings</div><div class="mi-sub">Night patrol · 9:00 PM – 6:00 AM</div></div>
+        <div class="mi-arrow">›</div>
+      </div>
+      <div class="menu-item">
+        <div class="mi-icon">❓</div>
+        <div class="mi-text"><div class="mi-title">Help & Support</div><div class="mi-sub">Toll-free: 1800-XXX-XXXX</div></div>
+        <div class="mi-arrow">›</div>
+      </div>
+      <div class="menu-item" onclick="switchTab('reg');showToast('Redirecting to registration...')">
+        <div class="mi-icon">🚪</div>
+        <div class="mi-text"><div class="mi-title">Sign Out</div><div class="mi-sub">Log out of AgroTrack</div></div>
+        <div class="mi-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast-m" id="toast-m">
+    <span>🌿</span><span id="toast-msg-m">Message</span>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <div class="tab active" id="tab-home" onclick="switchTab('home')">
+      <div class="tab-icon">🏠</div>
+      <div class="tab-label">Home</div>
+      <div class="tab-dot"></div>
+    </div>
+    <div class="tab" id="tab-scan" onclick="switchTab('scan')">
+      <div class="tab-icon">🚁</div>
+      <div class="tab-label">Scan</div>
+      <div class="tab-dot"></div>
+    </div>
+    <div class="tab" id="tab-dash" onclick="switchTab('dash')">
+      <div class="tab-icon">📊</div>
+      <div class="tab-label">Dashboard</div>
+      <div class="tab-dot"></div>
+    </div>
+    <div class="tab" id="tab-disease" onclick="switchTab('disease')">
+      <div class="tab-icon">🦠</div>
+      <div class="tab-label">Disease</div>
+      <div class="tab-dot"></div>
+    </div>
+    <div class="tab" id="tab-more" onclick="switchTab('profile')">
+      <div class="tab-icon">👤</div>
+      <div class="tab-label">Profile</div>
+      <div class="tab-dot"></div>
+    </div>
+  </div>
+
+</div><!-- /phone-shell -->
+
+<script>
+// ── TIME ──
+function updateTime(){
+  const now=new Date();
+  let h=now.getHours(),m=now.getMinutes();
+  const ampm=h>=12?'PM':'AM';
+  h=h%12||12;
+  document.getElementById('stime').textContent=h+':'+(m<10?'0':'')+m+' '+ampm;
+}
+updateTime();setInterval(updateTime,10000);
+
+// ── SCREENS ──
+const screens={
+  home:'s-home',scan:'s-scan',dash:'s-dash',disease:'s-disease',
+  yield:'s-yield',water:'s-water',guardian:'s-guardian',reg:'s-reg',profile:'s-profile'
+};
+const tabMap={home:'home',scan:'scan',dash:'dash',disease:'disease',profile:'more'};
+
+function switchTab(id){
+  Object.values(screens).forEach(s=>{
+    const el=document.getElementById(s);
+    if(el){el.classList.remove('active');el.scrollTop=0;}
+  });
+  const el=document.getElementById(screens[id]);
+  if(el) el.classList.add('active');
+
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const tabId='tab-'+(tabMap[id]||id);
+  const tab=document.getElementById(tabId);
+  if(tab) tab.classList.add('active');
+}
+
+// ── TOAST ──
+function showToast(msg){
+  const t=document.getElementById('toast-m');
+  document.getElementById('toast-msg-m').textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+// ── REGISTER ──
+function handleReg(){
+  const n=document.getElementById('rn').value;
+  const m=document.getElementById('rm').value;
+  const d=document.getElementById('rd').value;
+  if(!n||!m||!d){showToast('⚠ Please fill all required fields');return;}
+  showToast('✅ Registered! Launching drone for '+n);
+  setTimeout(()=>switchTab('scan'),1200);
+}
+
+// ── TREATMENT ──
+function selTreat(id){
+  ['t1','t2'].forEach(t=>document.getElementById(t).classList.remove('sel'));
+  document.getElementById(id).classList.add('sel');
+}
+
+// ── DRONE CROPS ──
+const cr=document.getElementById('crop-row-m');
+if(cr){['🌾','🌾','🌿','🌾','🌾','🌿','🌾','🌾'].forEach(p=>{
+  const d=document.createElement('div');d.className='cp';d.textContent=p;cr.appendChild(d);
+});}
+
+// ── IMAGE COUNTER ──
+let cnt=0;
+setInterval(()=>{
+  const el=document.getElementById('img-cnt');
+  if(el&&cnt<240){cnt+=Math.floor(Math.random()*4)+1;if(cnt>240)cnt=240;el.textContent=cnt+' / 240';}
+},120);
+
+// ── BOTTOM NAV sub-screens via quick cards ──
+document.querySelectorAll('.qcard').forEach(c=>{
+  c.addEventListener('click',function(){
+    const fn=this.getAttribute('onclick');
+    if(!fn) return;
+  });
+});
+</script>
+</body>
+</html>
